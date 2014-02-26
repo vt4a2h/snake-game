@@ -5,8 +5,12 @@
 #include <QPainter>
 #include <QLineF>
 
+/*! \brief Вспомогательные графические элементы. */
 namespace graphics_item {
 
+    /*!
+     * \brief Класс реализует игровое поле для змейки.
+     */
     class Grid : public QGraphicsObject
     {
         Q_OBJECT

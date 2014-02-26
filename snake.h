@@ -11,6 +11,9 @@ namespace snake {
 
     using SnakeParts = QList<snake::SnakePart*>;
 
+    /*!
+     * \brief Класс реализует змейку.
+     */
     class Snake : public QObject
     {
         Q_OBJECT

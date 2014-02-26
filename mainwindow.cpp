@@ -9,10 +9,12 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
     , m_Scene(new QGraphicsScene())
-    , m_TextMessage(new QGraphicsTextItem())
+    , m_ErrorMessage(new QGraphicsTextItem())
+    , m_ScoreMessage(new QGraphicsTextItem())
     , m_Item(nullptr)
     , m_Grid(new graphics_item::Grid(CELL_COUNT_H, CELL_COUNT_V, {CELL_WIDTH, CELL_HEIGHT}))
     , m_Snake(new snake::Snake())
+    , m_Score(0)
     , m_Apple(nullptr)
     , m_SnakeTimer(new QTimer(this))
 {
@@ -22,7 +24,8 @@ MainWindow::MainWindow(QWidget *parent)
     ui->gv_Main->installEventFilter(this);
 
     m_Scene->addItem(m_Grid);
-    m_Scene->addItem(m_TextMessage);
+    m_Scene->addItem(m_ErrorMessage);
+    m_Scene->addItem(m_ScoreMessage);
 
     connectElements();
     newGame();
@@ -31,7 +34,15 @@ MainWindow::MainWindow(QWidget *parent)
 MainWindow::~MainWindow()
 {
     delete ui;
+
+    // for valgrind healthy
+    delete m_ErrorMessage;
+    delete m_ScoreMessage;
+    delete m_Item;
+    delete m_Grid;
     delete m_Snake;
+    delete m_Apple;
+    delete m_SnakeTimer;
 }
 
 bool MainWindow::eventFilter(QObject *o, QEvent *ev)
@@ -75,11 +86,17 @@ void MainWindow::newGame()
     clearSnake();
     setupElements();
 
+    m_Score = 0;
     m_GameStatus = InGame;
-    m_TextMessage->hide();
-    itemToStart();
+
+    m_ErrorMessage->hide();
     m_SnakeTimer->start(200);
-    emit needApple();
+
+    makeApple();
+    updateScore();
+
+    itemToStart();
+
     qsrand(QTime::currentTime().msec());
 }
 
@@ -97,8 +114,9 @@ void MainWindow::makeApple()
                                       .scaled(QSize(CELL_WIDTH - margin, CELL_HEIGHT - margin),
                                               Qt::IgnoreAspectRatio,
                                               Qt::SmoothTransformation)
-                                      );
+                                      ); // NOTE: vagrind memcheck warning oO
         m_Apple->setPos(itemPos);
+        m_Apple->setData(0, 5); // tmp score impl
     }
 }
 
@@ -108,22 +126,22 @@ void MainWindow::moveItem()
     switch (m_Snake->direction()) {
     case snake::SnakePart::Right:
         if (m_Snake->head()->x() > r.right()){
-            emit youLose();
+            playerLose();
             return;
         }
     case snake::SnakePart::Left:
         if (m_Snake->head()->x() < r.left()){
-            emit youLose();
+            playerLose();
             return;
         }
     case snake::SnakePart::Up:
         if (m_Snake->head()->y() < r.top()){
-            emit youLose();
+            playerLose();
             return;
         }
     case snake::SnakePart::Down:
         if (m_Snake->head()->y() > r.bottom()){
-            emit youLose();
+            playerLose();
             return;
         }
     }
@@ -131,19 +149,29 @@ void MainWindow::moveItem()
     checkCollides();
 }
 
+void MainWindow::updateScore()
+{
+    m_ScoreMessage->setPlainText(tr("Очки: %1").arg(m_Score));
+}
+
 void MainWindow::playerLose()
 {
     m_SnakeTimer->stop();
     m_Item->setDirection(snake::SnakePart::Right);
-    m_TextMessage->show();
+    m_ErrorMessage->show();
     m_GameStatus = Lose;
 }
 
 void MainWindow::setupElements()
 {
     QPointF messagePos(m_Grid->width() / 2 + 10, - m_Grid->height() / 2);
-    m_TextMessage->setPlainText(tr("Вы проиграли!\n\nНажмите \"r\" для начала новой игры."));
-    m_TextMessage->setPos(messagePos);
+    m_ErrorMessage->setPlainText(tr("Вы проиграли!\n\nНажмите \"r\" для начала новой игры."));
+    m_ErrorMessage->setPos(messagePos);
+
+    messagePos.setX(m_Grid->boundingRect().topLeft().x() - m_Grid->margin());
+    messagePos.setY(m_Grid->boundingRect().topLeft().y() - CELL_HEIGHT);
+    updateScore();
+    m_ScoreMessage->setPos(messagePos);
 
     m_Item = new snake::SnakePart({CELL_WIDTH, CELL_HEIGHT});
     m_Scene->addItem(m_Item);
@@ -153,9 +181,7 @@ void MainWindow::setupElements()
 
 void MainWindow::connectElements()
 {
-    connect(this, &MainWindow::youLose, this, &MainWindow::playerLose);
     connect(m_SnakeTimer, &QTimer::timeout, this, &MainWindow::moveItem);
-    connect(this, &MainWindow::needApple, this, &MainWindow::makeApple);
 }
 
 void MainWindow::itemToStart()
@@ -174,11 +200,14 @@ void MainWindow::checkCollides()
         m_Snake->addPart(part);
         part->moveDirection();
 
+        m_Score += m_Apple->data(0).toFloat();
+        updateScore();
+
         m_Scene->removeItem(m_Apple);
         delete m_Apple;
         m_Apple = nullptr;
-        emit needApple();
-    } else if (m_Scene->items(m_Snake->head()->pos()).count() > 2) emit youLose();
+        makeApple();
+    } else if (m_Scene->items(m_Snake->head()->pos()).count() > 2) playerLose();
 }
 
 void MainWindow::clearSnake()

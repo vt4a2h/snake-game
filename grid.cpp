@@ -25,7 +25,6 @@ namespace graphics_item {
         Q_UNUSED(widget)
 
         drawBorder(painter);
-//        drawLines(painter);
     }
 
     void Grid::drawBorder(QPainter *p)

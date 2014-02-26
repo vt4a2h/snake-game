@@ -4,8 +4,12 @@
 #include <QGraphicsObject>
 #include <QPainter>
 
+/*! \brief Составляющие змейки. */
 namespace snake {
 
+    /*!
+     * \brief Класс реализует одну часть змейки.
+     */
     class SnakePart : public QGraphicsObject
     {
         Q_OBJECT

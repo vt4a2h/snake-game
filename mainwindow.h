@@ -25,6 +25,9 @@ namespace graphics_item {
 
 using Scene = std::unique_ptr<QGraphicsScene>;
 
+/*!
+ * \brief Класс реализует контроллер главного кона программы.
+ */
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -40,10 +43,7 @@ public:
 public slots:
     void makeApple();
     void moveItem();
-
-signals:
-    void youLose();
-    void needApple();
+    void updateScore();
 
 private:
     enum GameStatus{InGame, Win, Lose};
@@ -63,15 +63,17 @@ private:
     Ui::MainWindow *ui;
 
     Scene m_Scene;
-    QGraphicsTextItem *m_TextMessage;
+    QGraphicsTextItem *m_ErrorMessage;
+    QGraphicsTextItem *m_ScoreMessage;
     snake::SnakePart *m_Item;
     graphics_item::Grid *m_Grid;
 
     snake::Snake *m_Snake;
 
     GameStatus m_GameStatus;
-    QGraphicsPixmapItem *m_Apple;
+    float m_Score;
 
+    QGraphicsPixmapItem *m_Apple;
     QTimer *m_SnakeTimer;
 };
 
